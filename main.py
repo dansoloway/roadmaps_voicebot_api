@@ -1,20 +1,18 @@
 # Voice API for Roadmaps — deploy as main.py on api.roadmaps.fit
 # Canonical copy also lives at: roadmaps_daniel/voice/api_3/fish_server_main.py
+#
+# Design: stateless proxy to fish.audio. No local audio files. MP3 is streamed
+# through memory in chunks. Persistent storage is on the PHP web server
+# (roadmapvoicebot.org/voice/output/), not this box.
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from fastapi.responses import Response
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from io import BytesIO
 from dotenv import load_dotenv
 from fish_audio_sdk import Session, TTSRequest
 
 load_dotenv()
-
-VOICE_PATH_ALLOWED_BASE = os.environ.get(
-    "VOICE_PATH_ALLOWED_BASE",
-    "/home/bitnami/htdocs/voice/output",
-)
 
 FISH_AUDIO_API_KEY = os.environ.get("FISH_AUDIO_API_KEY")
 if not FISH_AUDIO_API_KEY:
@@ -42,27 +40,11 @@ async def home():
 async def clone_voice(
     title: str = Form(...),
     description: str = Form(...),
-    voices: UploadFile = File(None),
-    voice_path: str = Form(None),
+    voices: UploadFile = File(...),
 ):
-    """Create a voice model by uploading audio, or by server path (for testing)."""
+    """Create a voice model; audio is forwarded to fish.audio (not saved locally)."""
     try:
-        if voice_path:
-            path = os.path.normpath(voice_path)
-            base = os.path.normpath(VOICE_PATH_ALLOWED_BASE)
-            if not path.startswith(base) or ".." in path:
-                raise HTTPException(status_code=400, detail="voice_path not allowed")
-            if not os.path.isfile(path):
-                raise HTTPException(status_code=404, detail=f"File not found: {path}")
-            with open(path, "rb") as f:
-                voice_data = [f.read()]
-        elif voices and voices.filename:
-            voice_data = [await voices.read()]
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Provide either 'voices' file upload or 'voice_path'.",
-            )
+        voice_data = [await voices.read()]
         model = session.create_model(
             title=title,
             description=description,
@@ -80,14 +62,15 @@ async def generate_narration(
     model_id: str = Form(...),
     text: str = Form(...),
 ):
-    """Generate narration audio; return raw MP3 bytes."""
+    """Stream MP3 from fish.audio without buffering the full file on disk."""
     try:
-        audio_chunks = session.tts(TTSRequest(text=text, reference_id=model_id))
-        buffer = BytesIO()
-        for chunk in audio_chunks:
-            buffer.write(chunk)
-        buffer.seek(0)
-        return Response(content=buffer.getvalue(), media_type="audio/mpeg")
+        request = TTSRequest(text=text, reference_id=model_id)
+
+        def iter_audio():
+            for chunk in session.tts(request):
+                yield chunk
+
+        return StreamingResponse(iter_audio(), media_type="audio/mpeg")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

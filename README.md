@@ -3,6 +3,22 @@
 FastAPI service that powers voice cloning and narration for Roadmaps.
 The PHP app (`roadmaps_daniel/voice/`) calls this at `FISH_API_BASE_URL`.
 
+## Architecture (1 GB Lightsail)
+
+This instance is a **thin proxy** to [Fish Audio](https://fish.audio). It is intentionally
+stateless:
+
+| Concern | This Python API | PHP web server |
+|--------|-----------------|----------------|
+| Save MP3/WAV files | **No** | **Yes** — `voice/output/` |
+| Voice models | Stored in **Fish Audio cloud** | DB stores `fish_id` only |
+| RAM | Streams TTS chunks; no full-file buffer on disk | Saves narration after curl |
+
+- **`/clone-voice/`** — reads upload into memory once, forwards to fish.audio, returns `model_id`
+- **`/generate-narration/`** — streams MP3 chunks from fish.audio to the caller (PHP saves the file)
+
+Plan disk monitoring on **roadmapvoicebot.org**, not on this API box.
+
 **Endpoints**
 
 | Method | Path | Purpose |
