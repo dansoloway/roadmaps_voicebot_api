@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roadmaps.Fun API Documentation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Roadmaps.Fun API Documentation</h1>
+    <p>Welcome to the <strong>Roadmaps.Fun API</strong>. This API allows you to create AI-generated voices and generate narrations using cloned voices.</p>
+
+    <hr>
+
+    <h2>1️⃣ Create a Voice Model (<code>POST /clone-voice/</code>)</h2>
+
+    <h3>Endpoint</h3>
+    <pre>POST https://api.roadmaps.fun/clone-voice/</pre>
+
+    <h3>Description</h3>
+    <p>Create a voice model by uploading an audio sample of the target voice. Use the returned <code>model_id</code> to generate narrations.</p>
+
+    <h3>Request Parameters</h3>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Type</th>
+            <th>Required</th>
+            <th>Description</th>
+        </tr>
+        <tr>
+            <td><code>title</code></td>
+            <td>String</td>
+            <td>✅ Yes</td>
+            <td>A title for the voice model.</td>
+        </tr>
+        <tr>
+            <td><code>description</code></td>
+            <td>String</td>
+            <td>✅ Yes</td>
+            <td>A short description of the cloned voice.</td>
+        </tr>
+        <tr>
+            <td><code>voices</code></td>
+            <td>File</td>
+            <td>✅ Yes</td>
+            <td>An audio file (MP3/WAV) containing the reference voice.</td>
+        </tr>
+    </table>
+
+    <h3>Example Request (CURL)</h3>
+    <pre>
+curl -X 'POST' \
+  'https://api.roadmaps.fun/clone-voice/' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'title=test' \
+  -F 'description=test' \
+  -F 'voices=@/Users/daniel-new2/Downloads/sample_daniel.mp3'
+    </pre>
+
+    <h3>Successful Response</h3>
+    <pre>
+{
+  "model_id": "4bcffef7da34455a857bf5a16923b391",
+  "message": "Voice model created successfully."
+}
+    </pre>
+
+    <h3>Error Responses</h3>
+    <table>
+        <tr>
+            <th>HTTP Code</th>
+            <th>Message</th>
+        </tr>
+        <tr>
+            <td>400</td>
+            <td>Missing required fields or incorrect file format.</td>
+        </tr>
+        <tr>
+            <td>500</td>
+            <td>Server error during voice processing.</td>
+        </tr>
+    </table>
+
+    <hr>
+
+    <h2>2️⃣ Generate Narration (<code>POST /generate-narration/</code>)</h2>
+
+    <h3>Endpoint</h3>
+    <pre>POST https://api.roadmaps.fun/generate-narration/</pre>
+
+    <h3>Description</h3>
+    <p>Generate an AI narration using a previously created voice model.</p>
+
+    <h3>Request Parameters</h3>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Type</th>
+            <th>Required</th>
+            <th>Description</th>
+        </tr>
+        <tr>
+            <td><code>model_id</code></td>
+            <td>String</td>
+            <td>✅ Yes</td>
+            <td>The ID of the cloned voice model.</td>
+        </tr>
+        <tr>
+            <td><code>text</code></td>
+            <td>String</td>
+            <td>✅ Yes</td>
+            <td>The text you want to convert into speech.</td>
+        </tr>
+    </table>
+
+    <h3>Example Request (CURL)</h3>
+    <pre>
+curl -X 'POST' \
+  'https://api.roadmaps.fun/generate-narration/' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'model_id=4bcffef7da34455a857bf5a16923b391' \
+  -F 'text=Four score and seven years ago our fathers brought forth, upon this continent, a new nation, conceived in Liberty, and dedicated to the proposition that all men are created equal.' \
+  --output narration.mp3
+    </pre>
+
+    <h3>Successful Response</h3>
+    <p>The API returns an <strong>MP3 file</strong> (<code>narration.mp3</code>) containing the generated narration.</p>
+
+    <h3>Error Responses</h3>
+    <table>
+        <tr>
+            <th>HTTP Code</th>
+            <th>Message</th>
+        </tr>
+        <tr>
+            <td>400</td>
+            <td>Missing required fields or incorrect <code>model_id</code>.</td>
+        </tr>
+        <tr>
+            <td>404</td>
+            <td>Voice model not found.</td>
+        </tr>
+        <tr>
+            <td>500</td>
+            <td>Server error during narration generation.</td>
+        </tr>
+    </table>
+
+    <hr>
+
+    <h2>📌 Notes</h2>
+    <ul>
+        <li>Ensure the <code>voices</code> file is clear and high-quality for better voice cloning accuracy.</li>
+        <li>If you receive <code>"Voice model not found"</code>, verify the <code>model_id</code> returned from <code>/clone-voice/</code>.</li>
+        <li>Use <code>--output filename.mp3</code> in curl to save the generated audio file.</li>
+    </ul>
+
+    <p>🚀 Now you're ready to integrate AI-powered voice cloning and narration into your applications!</p>
+
+</body>
+</html>
