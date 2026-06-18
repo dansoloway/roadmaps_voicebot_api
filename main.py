@@ -6,7 +6,10 @@ from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from io import BytesIO
+from dotenv import load_dotenv
 from fish_audio_sdk import Session, TTSRequest
+
+load_dotenv()
 
 VOICE_PATH_ALLOWED_BASE = os.environ.get(
     "VOICE_PATH_ALLOWED_BASE",
