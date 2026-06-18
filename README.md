@@ -47,21 +47,17 @@ echo 'FISH_AUDIO_API_KEY=your-key' > .env
 uvicorn main:app --host 127.0.0.1 --port 8000   # test
 ```
 
-4. Nginx (HTTPS → port 8000):
+4. Nginx + HTTPS (see `deploy/nginx-api.roadmaps.fit.conf`):
 
-```nginx
-server {
-    listen 443 ssl;
-    server_name api.roadmaps.fit;
-    # ssl_certificate ... (certbot)
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        client_max_body_size 50M;
-    }
-}
+```bash
+sudo apt install -y nginx certbot python3-certbot-nginx
+cd ~/roadmaps_voicebot_api
+sudo cp deploy/nginx-api.roadmaps.fit.conf /etc/nginx/sites-available/api.roadmaps.fit
+sudo ln -sf /etc/nginx/sites-available/api.roadmaps.fit /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default   # optional: avoid default site conflicts
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d api.roadmaps.fit
+curl -s https://api.roadmaps.fit/
 ```
 
 5. systemd service (`/etc/systemd/system/fish-audio-api.service`):
@@ -73,9 +69,9 @@ After=network.target
 
 [Service]
 User=ubuntu
-WorkingDirectory=/home/ubuntu/fish_audio_env
-EnvironmentFile=/home/ubuntu/fish_audio_env/.env
-ExecStart=/home/ubuntu/fish_audio_env/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+WorkingDirectory=/home/ubuntu/roadmaps_voicebot_api
+EnvironmentFile=/home/ubuntu/roadmaps_voicebot_api/.env
+ExecStart=/home/ubuntu/roadmaps_voicebot_api/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
 Restart=always
 
 [Install]
